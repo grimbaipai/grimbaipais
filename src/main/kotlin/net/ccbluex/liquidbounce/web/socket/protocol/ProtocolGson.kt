@@ -22,8 +22,10 @@ package net.ccbluex.liquidbounce.web.socket.protocol
 import com.google.gson.*
 import net.ccbluex.liquidbounce.config.ConfigSystem.registerCommonTypeAdapters
 import net.ccbluex.liquidbounce.config.Configurable
-import net.ccbluex.liquidbounce.config.adapter.ProtocolConfigurableSerializer
 import net.ccbluex.liquidbounce.utils.client.convertToString
+import net.ccbluex.liquidbounce.web.theme.ComponentSerializer
+import net.ccbluex.liquidbounce.web.theme.component.Component
+import net.minecraft.SharedConstants
 import net.minecraft.client.network.ServerInfo
 import net.minecraft.entity.effect.StatusEffectInstance
 import net.minecraft.item.ItemStack
@@ -42,6 +44,42 @@ class ProtocolExclusionStrategy : ExclusionStrategy {
     override fun shouldSkipField(field: FieldAttributes) = field.getAnnotation(ProtocolExclude::class.java) != null
 }
 
+object ProtocolConfigurableWithComponentSerializer : JsonSerializer<Configurable> {
+
+    override fun serialize(
+        src: Configurable,
+        typeOfSrc: Type,
+        context: JsonSerializationContext
+    ): JsonElement {
+        if (src is Component) {
+            return ComponentSerializer.serialize(src, typeOfSrc, context)
+        }
+
+        return JsonObject().apply {
+            addProperty("name", src.name)
+            add("value", context.serialize(src.value.filter {
+                !it.notAnOption
+            }))
+            add("valueType", context.serialize(src.valueType))
+        }
+    }
+}
+
+object ProtocolConfigurableSerializer : JsonSerializer<Configurable> {
+
+    override fun serialize(
+        src: Configurable,
+        typeOfSrc: Type,
+        context: JsonSerializationContext
+    ) = JsonObject().apply {
+        addProperty("name", src.name)
+        add("value", context.serialize(src.value.filter {
+            !it.notAnOption
+        }))
+        add("valueType", context.serialize(src.valueType))
+    }
+}
+
 class ServerInfoSerializer : JsonSerializer<ServerInfo> {
     override fun serialize(src: ServerInfo?, typeOfSrc: Type?, context: JsonSerializationContext?)
         = src?.asJsonObject()
@@ -55,6 +93,8 @@ class ServerInfoSerializer : JsonSerializer<ServerInfo> {
         add("playerCountLabel", protocolGson.toJsonTree(playerCountLabel))
         add("version", protocolGson.toJsonTree(version))
         addProperty("protocolVersion", protocolVersion)
+        addProperty("protocolVersionMatches", protocolVersion == SharedConstants.getGameVersion().protocolVersion)
+        addProperty("ping", ping)
         add("players", JsonObject().apply {
             addProperty("max", players?.max)
             addProperty("online", players?.online)
@@ -112,10 +152,17 @@ class StatusEffectInstanceSerializer : JsonSerializer<StatusEffectInstance> {
 
 }
 
-internal val protocolGson = GsonBuilder()
+internal val strippedProtocolGson = GsonBuilder()
     .addSerializationExclusionStrategy(ProtocolExclusionStrategy())
     .registerCommonTypeAdapters()
     .registerTypeHierarchyAdapter(Configurable::class.javaObjectType, ProtocolConfigurableSerializer)
+    .create()
+
+internal val protocolGson = GsonBuilder()
+    .addSerializationExclusionStrategy(ProtocolExclusionStrategy())
+    .registerCommonTypeAdapters()
+    //.registerTypeHierarchyAdapter(Component::class.java, ComponentSerializer)
+    .registerTypeHierarchyAdapter(Configurable::class.javaObjectType, ProtocolConfigurableWithComponentSerializer)
     .registerTypeAdapter(ServerInfo::class.java, ServerInfoSerializer())
     .registerTypeAdapter(GameMode::class.java, GameModeSerializer())
     .registerTypeAdapter(ItemStack::class.java, ItemStackSerializer())

@@ -32,7 +32,7 @@ val ALL_EVENT_CLASSES: Array<KClass<out Event>> = arrayOf(
     BlockChangeEvent::class,
     ChunkLoadEvent::class,
     ChunkUnloadEvent::class,
-    WorldDisconnectEvent::class,
+    DisconnectEvent::class,
     GameRenderEvent::class,
     WorldRenderEvent::class,
     OverlayRenderEvent::class,
@@ -102,7 +102,8 @@ val ALL_EVENT_CLASSES: Array<KClass<out Event>> = arrayOf(
     ServerConnectEvent::class,
     ServerPingedEvent::class,
     TargetChangeEvent::class,
-    GameModeChangeEvent::class
+    GameModeChangeEvent::class,
+    ComponentsUpdate::class
 )
 
 /**

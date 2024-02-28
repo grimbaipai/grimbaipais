@@ -109,6 +109,8 @@ object AccountManager : Configurable("Accounts"), Listenable {
         EventManager.callEvent(AltManagerUpdateEvent(false, it.message ?: "Unknown error"))
     }.getOrThrow()
 
+    private val USERNAME_REGEX = Regex("[a-zA-z0-9_]{1,16}")
+
     /**
      * Cracked account. This can only be used to join cracked servers and not premium servers.
      */
@@ -121,6 +123,10 @@ object AccountManager : Configurable("Accounts"), Listenable {
 
         if (username.length > 16) {
             error("Username is too long!")
+        }
+
+        if (!USERNAME_REGEX.matches(username)) {
+            error("Username contains invalid characters!")
         }
 
         // Check if account already exists
@@ -290,6 +296,26 @@ object AccountManager : Configurable("Accounts"), Listenable {
         mc.session = initialSession.session
         mc.sessionService = initialSession.sessionService
         mc.profileKeys = initialSession.profileKeys
+    }
+
+    fun favoriteAccount(id: Int) {
+        val account = accounts.getOrNull(id) ?: error("Account not found!")
+        account.favorite()
+        ConfigSystem.storeConfigurable(this@AccountManager)
+    }
+
+    fun unfavoriteAccount(id: Int) {
+        val account = accounts.getOrNull(id) ?: error("Account not found!")
+        account.unfavorite()
+        ConfigSystem.storeConfigurable(this@AccountManager)
+    }
+
+    fun swapAccounts(index1: Int, index2: Int) {
+        val account1 = accounts.getOrNull(index1) ?: error("Account not found!")
+        val account2 = accounts.getOrNull(index2) ?: error("Account not found!")
+        accounts[index1] = account2
+        accounts[index2] = account1
+        ConfigSystem.storeConfigurable(this@AccountManager)
     }
 
     data class SessionData(val session: Session, val sessionService: MinecraftSessionService?,
